@@ -1,0 +1,117 @@
+@import url("https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@300;400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* Dark luxury theme — always dark */
+    --background: 0.08 0.002 60;
+    --foreground: 0.955 0.012 88;
+    --card: 0.12 0.008 185;
+    --card-foreground: 0.955 0.012 88;
+    --popover: 0.14 0.008 185;
+    --popover-foreground: 0.955 0.012 88;
+    --primary: 0.7 0.12 74;
+    --primary-foreground: 0.08 0.002 60;
+    --secondary: 0.15 0.006 180;
+    --secondary-foreground: 0.955 0.012 88;
+    --muted: 0.15 0.006 180;
+    --muted-foreground: 0.73 0.012 88;
+    --accent: 0.7 0.12 74;
+    --accent-foreground: 0.08 0.002 60;
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 0.985 0 0;
+    --border: 0.22 0.004 180;
+    --input: 0.18 0.006 180;
+    --ring: 0.7 0.12 74;
+    --chart-1: 0.7 0.12 74;
+    --chart-2: 0.6 0.118 184.704;
+    --chart-3: 0.398 0.07 227.392;
+    --chart-4: 0.828 0.189 84.429;
+    --chart-5: 0.769 0.188 70.08;
+    --sidebar: 0.1 0.006 180;
+    --sidebar-foreground: 0.955 0.012 88;
+    --sidebar-primary: 0.7 0.12 74;
+    --sidebar-primary-foreground: 0.08 0.002 60;
+    --sidebar-accent: 0.15 0.006 180;
+    --sidebar-accent-foreground: 0.955 0.012 88;
+    --sidebar-border: 0.22 0.004 180;
+    --sidebar-ring: 0.7 0.12 74;
+
+    /* Custom gold tokens */
+    --gold: 0.7 0.12 74;
+    --gold-border: 0.58 0.1 73;
+    --gold-light: 0.88 0.05 85;
+    --gold-dim: 0.5 0.09 73;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Noto Sans Devanagari", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer utilities {
+  .text-gold {
+    color: oklch(var(--gold));
+  }
+  .bg-gold {
+    background-color: oklch(var(--gold));
+  }
+  .border-gold {
+    border-color: oklch(var(--gold-border));
+  }
+  .text-gold-light {
+    color: oklch(var(--gold-light));
+  }
+
+  .card-glow {
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+  .card-glow:hover {
+    box-shadow: 0 0 24px 2px oklch(var(--gold) / 0.2), 0 4px 24px
+      oklch(0 0 0 / 0.5);
+    transform: translateY(-3px) scale(1.01);
+  }
+
+  .gold-glow {
+    box-shadow: 0 0 16px oklch(var(--gold) / 0.35);
+  }
+
+  .nav-link {
+    @apply text-gold-light transition-colors duration-200;
+  }
+  .nav-link:hover {
+    color: oklch(var(--gold));
+  }
+  .nav-link.active {
+    color: oklch(var(--gold));
+    font-weight: 600;
+  }
+}
+
+/* Smooth scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: oklch(var(--background));
+}
+::-webkit-scrollbar-thumb {
+  background: oklch(var(--gold-dim));
+  border-radius: 4px;
+}

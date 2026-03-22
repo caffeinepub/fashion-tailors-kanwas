@@ -1,0 +1,28 @@
+{
+  "name": "फैशन टेलर्स कनवास",
+  "short_name": "Kanwas",
+  "description": "प्रीमियम टेलरिंग शॉप - कनवास, राजस्थान",
+  "theme_color": "#c9a24a",
+  "background_color": "#0b0b0b",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "start_url": "/",
+  "scope": "/",
+  "lang": "hi",
+  "icons": [
+    {
+      "src": "/assets/generated/kanwas-icon-192.dim_192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/generated/kanwas-icon-512.dim_512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["shopping", "lifestyle"],
+  "screenshots": []
+}
