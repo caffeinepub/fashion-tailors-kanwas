@@ -111,39 +111,77 @@ export default function ServicesPage() {
               <div
                 key={service.id}
                 data-ocid={`services.item.${i + 1}`}
-                className="card-glow rounded-xl p-6 flex flex-col gap-4"
+                className="card-glow rounded-xl overflow-hidden flex flex-col"
                 style={{
                   background: "oklch(var(--card))",
                   border: "1px solid oklch(var(--gold-border))",
                 }}
               >
-                <span className="text-5xl">{service.icon}</span>
-                <div className="flex-1">
-                  <h3 className="text-base font-bold text-foreground mb-1">
-                    {service.name}
-                  </h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {service.description}
-                  </p>
-                </div>
-                <div
-                  className="flex items-center justify-between pt-4"
-                  style={{ borderTop: "1px solid oklch(var(--border))" }}
-                >
-                  <span className="text-lg font-black text-gold">
-                    ₹ {service.price.toLocaleString("hi-IN")}+
-                  </span>
-                  <Button
-                    asChild
-                    size="sm"
-                    data-ocid={`services.primary_button.${i + 1}`}
+                {/* Service Image */}
+                <div className="relative w-full" style={{ paddingTop: "65%" }}>
+                  {service.image ? (
+                    <img
+                      src={service.image}
+                      alt={service.name}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center text-5xl"
+                      style={{ background: "oklch(var(--muted))" }}
+                    >
+                      {service.icon}
+                    </div>
+                  )}
+                  {/* Gold price badge */}
+                  <div
+                    className="absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-black"
                     style={{
                       background: "oklch(var(--gold))",
-                      color: "oklch(var(--primary-foreground))",
+                      color: "#1a1000",
                     }}
                   >
-                    <NavLink to="/booking">बुकिंग करें</NavLink>
-                  </Button>
+                    ₹{service.price.toLocaleString("hi-IN")}
+                  </div>
+                </div>
+
+                {/* Card Content */}
+                <div className="p-5 flex flex-col gap-3 flex-1">
+                  <div className="flex-1">
+                    <h3 className="text-base font-bold text-foreground mb-1">
+                      {service.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {service.description}
+                    </p>
+                  </div>
+                  <div
+                    className="flex items-center justify-between pt-3"
+                    style={{ borderTop: "1px solid oklch(var(--border))" }}
+                  >
+                    <div>
+                      <span className="text-lg font-black text-gold">
+                        ₹ {service.price.toLocaleString("hi-IN")}
+                      </span>
+                      {service.priceNote && (
+                        <span className="text-xs text-muted-foreground ml-1">
+                          ({service.priceNote})
+                        </span>
+                      )}
+                    </div>
+                    <Button
+                      asChild
+                      size="sm"
+                      data-ocid={`services.primary_button.${i + 1}`}
+                      style={{
+                        background: "oklch(var(--gold))",
+                        color: "oklch(var(--primary-foreground))",
+                      }}
+                    >
+                      <NavLink to="/booking">बुकिंग करें</NavLink>
+                    </Button>
+                  </div>
                 </div>
               </div>
             ))}

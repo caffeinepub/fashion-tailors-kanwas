@@ -15,10 +15,14 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Camera,
   Edit2,
   Image,
+  ImagePlus,
+  Loader2,
   LogOut,
   Plus,
+  RefreshCw,
   Save,
   Scissors,
   Settings,
@@ -44,6 +48,30 @@ const EMPTY_SERVICE: Omit<Service, "id"> = {
   description: "",
   price: 0,
   icon: "✂️",
+  image: "",
+};
+
+// Auto-generate image URL from service name
+const getAutoImage = (name: string): string => {
+  const keywords: Record<string, string> = {
+    जोधपुरी: "jodhpuri+suit+royal+men",
+    कोट: "mens+coat+pant+formal",
+    "3 पीस": "three+piece+suit+men+formal",
+    कुर्ता: "mens+kurta+pajama+traditional",
+    शेरवानी: "mens+sherwani+wedding",
+    बच्चे: "boys+kids+suit+fashion",
+    बच्चों: "boys+kids+suit",
+    पेंट: "mens+formal+trousers",
+    सूट: "mens+suit+formal",
+    पायजामा: "mens+kurta+pajama",
+    हंटिंग: "mens+hunting+jacket",
+    कोठी: "mens+kurta+traditional",
+  };
+  for (const [key, val] of Object.entries(keywords)) {
+    if (name.includes(key))
+      return `https://source.unsplash.com/400x300/?${val}`;
+  }
+  return `https://source.unsplash.com/400x300/?mens+${encodeURIComponent(name)},fashion`;
 };
 
 export default function AdminDashboardPage() {
@@ -63,11 +91,21 @@ export default function AdminDashboardPage() {
 
   const [form, setForm] = useState<Omit<Service, "id">>(EMPTY_SERVICE);
   const [editId, setEditId] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
   const [galleryCaption, setGalleryCaption] = useState("");
   const [settingsForm, setSettingsForm] = useState<ShopSettings>(settings);
+  // For gallery photo editing
   const [editImgId, setEditImgId] = useState<number | null>(null);
   const [editCaption, setEditCaption] = useState("");
+  const [editImgUrl, setEditImgUrl] = useState("");
+  const [fullscreenImg, setFullscreenImg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const galleryCameraRef = useRef<HTMLInputElement>(null);
+  const galleryFileRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const editImgCameraRef = useRef<HTMLInputElement>(null);
+  const editImgFileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
 
   const handleLogout = () => {
@@ -84,18 +122,28 @@ export default function AdminDashboardPage() {
       toast.error("मूल्य सही दर्ज करें");
       return;
     }
-    if (editId !== null) {
-      setServices((prev) =>
-        prev.map((s) => (s.id === editId ? { ...s, ...form } : s)),
-      );
-      setEditId(null);
-      toast.success("सेवा अपडेट की गई ✓");
-    } else {
-      setServices((prev) => [...prev, { id: Date.now(), ...form }]);
-      toast.success("सेवा सहेजी गई ✓");
-    }
-    setForm(EMPTY_SERVICE);
+
+    setSaving(true);
+    const finalImage = (form.image ?? "").trim() || getAutoImage(form.name);
+    const finalForm = { ...form, image: finalImage };
+
+    setTimeout(() => {
+      if (editId !== null) {
+        setServices((prev) =>
+          prev.map((s) => (s.id === editId ? { ...s, ...finalForm } : s)),
+        );
+        setEditId(null);
+        toast.success("✅ सेवा अपडेट हुई!");
+      } else {
+        setServices((prev) => [...prev, { id: Date.now(), ...finalForm }]);
+        toast.success("✅ सेवा जोड़ी गई!");
+      }
+      setForm(EMPTY_SERVICE);
+      setSaving(false);
+    }, 600);
   };
+
+  const editFormRef = useRef<HTMLDivElement>(null);
 
   const startEdit = (s: Service) => {
     setEditId(s.id);
@@ -104,7 +152,14 @@ export default function AdminDashboardPage() {
       description: s.description,
       price: s.price,
       icon: s.icon,
+      image: s.image || "",
     });
+    setTimeout(() => {
+      editFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   };
 
   const cancelEdit = () => {
@@ -114,13 +169,63 @@ export default function AdminDashboardPage() {
 
   const handleDeleteService = (id: number) => {
     setServices((prev) => prev.filter((s) => s.id !== id));
-    toast.success("सेवा हटाई गई ✓");
+    toast.success("🗑️ सेवा हटाई गई");
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  // Compress image to max 800px and 75% quality to avoid localStorage overflow
+  const handleImageFile = (file: File, setter: (url: string) => void) => {
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new window.Image();
+      img.onload = () => {
+        const MAX = 800;
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height / width) * MAX);
+            width = MAX;
+          } else {
+            width = Math.round((width / height) * MAX);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          setter(ev.target?.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressed = canvas.toDataURL("image/jpeg", 0.75);
+        setter(compressed);
+      };
+      img.onerror = () => setter(ev.target?.result as string);
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCameraCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleImageFile(file, (url) => setForm((f) => ({ ...f, image: url })));
+    if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
+
+  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleImageFile(file, (url) => setForm((f) => ({ ...f, image: url })));
+    if (galleryInputRef.current) galleryInputRef.current.value = "";
+  };
+
+  // Gallery upload handlers
+  const handleGalleryUpload = (files: FileList | null) => {
     if (!files || files.length === 0) return;
     setUploading(true);
+    let count = 0;
     for (const file of Array.from(files)) {
       const reader = new FileReader();
       reader.onload = (ev) => {
@@ -133,34 +238,52 @@ export default function AdminDashboardPage() {
             caption: galleryCaption.trim() || file.name.replace(/\.[^.]+$/, ""),
           },
         ]);
-        toast.success("फ़ोटो अपलोड हुई ✓");
-        setUploading(false);
+        count++;
+        if (count >= files.length) {
+          toast.success(`${count} फ़ोटो अपलोड हुई ✓`);
+          setUploading(false);
+          setGalleryCaption("");
+        }
       };
       reader.readAsDataURL(file);
     }
-    setGalleryCaption("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (galleryCameraRef.current) galleryCameraRef.current.value = "";
+    if (galleryFileRef.current) galleryFileRef.current.value = "";
   };
 
   const handleDeleteImage = (id: number) => {
     setGallery((prev) => prev.filter((g) => g.id !== id));
-    toast.success("फ़ोटो हटाई गई ✓");
+    toast.success("🗑️ फ़ोटो हटाई गई");
   };
 
+  // Gallery edit: open edit mode for caption + photo replacement
   const startEditImg = (img: GalleryImage) => {
     setEditImgId(img.id);
     setEditCaption(img.caption);
+    setEditImgUrl(img.url);
+  };
+
+  const handleEditImgFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    handleImageFile(file, (url) => setEditImgUrl(url));
+    if (editImgCameraRef.current) editImgCameraRef.current.value = "";
+    if (editImgFileRef.current) editImgFileRef.current.value = "";
   };
 
   const saveEditImg = () => {
     setGallery((prev) =>
       prev.map((g) =>
-        g.id === editImgId ? { ...g, caption: editCaption } : g,
+        g.id === editImgId
+          ? { ...g, caption: editCaption, url: editImgUrl }
+          : g,
       ),
     );
     setEditImgId(null);
     setEditCaption("");
-    toast.success("कैप्शन अपडेट हुआ ✓");
+    setEditImgUrl("");
+    toast.success("फ़ोटो अपडेट हुई ✓");
   };
 
   const handleSaveSettings = () => {
@@ -180,6 +303,33 @@ export default function AdminDashboardPage() {
         background: "linear-gradient(135deg, #0b0b0b 0%, #0e0c07 100%)",
       }}
     >
+      {/* Fullscreen image preview overlay */}
+      {fullscreenImg && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.95)" }}
+          onClick={() => setFullscreenImg(null)}
+          onKeyDown={(e) => e.key === "Escape" && setFullscreenImg(null)}
+          data-ocid="admin.modal"
+        >
+          <img
+            src={fullscreenImg}
+            alt="पूर्ण आकार"
+            className="max-w-full max-h-full object-contain rounded-xl shadow-2xl"
+            style={{ border: "2px solid oklch(var(--gold-border))" }}
+          />
+          <button
+            type="button"
+            className="absolute top-4 right-4 text-white text-3xl font-bold hover:text-gold transition-colors"
+            onClick={() => setFullscreenImg(null)}
+            data-ocid="admin.close_button"
+            aria-label="बंद करें"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Dashboard header */}
       <div
         className="sticky top-0 z-40 px-4 py-4"
@@ -252,9 +402,14 @@ export default function AdminDashboardPage() {
           {/* SERVICES TAB */}
           <TabsContent value="services">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="rounded-2xl p-6" style={cardStyle}>
+              {/* Add/Edit Form */}
+              <div
+                className="rounded-2xl p-6"
+                style={cardStyle}
+                ref={editFormRef}
+              >
                 <h2 className="text-base font-bold text-gold mb-5">
-                  {editId !== null ? "सेवा संपादित करें" : "नई सेवा / रेट जोड़ें"}
+                  {editId !== null ? "✏️ सेवा संपादित करें" : "➕ नई सेवा / रेट जोड़ें"}
                 </h2>
                 <div className="space-y-4">
                   <div className="grid grid-cols-4 gap-3">
@@ -294,6 +449,7 @@ export default function AdminDashboardPage() {
                       />
                     </div>
                   </div>
+
                   <div className="space-y-1.5">
                     <Label className="text-xs text-foreground">विवरण</Label>
                     <Textarea
@@ -311,6 +467,131 @@ export default function AdminDashboardPage() {
                       }}
                     />
                   </div>
+
+                  {/* Image upload — camera + gallery */}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-foreground">
+                      सेवा की फ़ोटो (वैकल्पिक)
+                    </Label>
+
+                    <input
+                      ref={cameraInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      className="hidden"
+                      onChange={handleCameraCapture}
+                    />
+                    <input
+                      ref={galleryInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleGallerySelect}
+                    />
+
+                    {form.image ? (
+                      <div
+                        className="relative w-full rounded-xl overflow-hidden"
+                        style={{
+                          border: "2px solid oklch(var(--gold-border))",
+                        }}
+                      >
+                        <img
+                          src={form.image}
+                          alt="सेवा की फ़ोटो"
+                          className="w-full h-44 object-cover"
+                        />
+                        <div
+                          className="absolute inset-0 flex items-center justify-center gap-2"
+                          style={{ background: "rgba(0,0,0,0.45)" }}
+                        >
+                          <Button
+                            size="sm"
+                            onClick={() => cameraInputRef.current?.click()}
+                            data-ocid="admin.upload_button"
+                            className="gap-1 text-xs"
+                            style={{
+                              background: "oklch(var(--gold))",
+                              color: "#0b0b0b",
+                            }}
+                          >
+                            <Camera className="w-3.5 h-3.5" /> कैमरा
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => galleryInputRef.current?.click()}
+                            data-ocid="admin.upload_button"
+                            className="gap-1 text-xs"
+                            style={{
+                              background: "oklch(var(--gold))",
+                              color: "#0b0b0b",
+                            }}
+                          >
+                            <ImagePlus className="w-3.5 h-3.5" /> गैलरी
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() =>
+                              setForm((f) => ({ ...f, image: "" }))
+                            }
+                            data-ocid="admin.delete_button"
+                            className="gap-1 text-xs"
+                            style={{
+                              background: "oklch(var(--destructive))",
+                              color: "#fff",
+                            }}
+                          >
+                            <X className="w-3.5 h-3.5" /> हटाएं
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => cameraInputRef.current?.click()}
+                            data-ocid="admin.upload_button"
+                            className="h-20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80 active:scale-95"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "2px dashed oklch(var(--gold-border))",
+                              color: "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <Camera className="w-6 h-6 text-gold" />
+                            <span className="text-xs font-medium">
+                              📷 कैमरा से खींचें
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => galleryInputRef.current?.click()}
+                            data-ocid="admin.upload_button"
+                            className="h-20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80 active:scale-95"
+                            style={{
+                              background: "oklch(var(--input))",
+                              border: "2px dashed oklch(var(--gold-border))",
+                              color: "oklch(var(--muted-foreground))",
+                            }}
+                          >
+                            <ImagePlus className="w-6 h-6 text-gold" />
+                            <span className="text-xs font-medium">
+                              🖼️ गैलरी से चुनें
+                            </span>
+                          </button>
+                        </div>
+                        <p
+                          className="text-xs text-center"
+                          style={{ color: "oklch(var(--gold))" }}
+                        >
+                          🤖 फ़ोटो नहीं चुनी तो ऑटो इमेज लग जाएगी
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-1.5">
                     <Label className="text-xs text-foreground">मूल्य (₹) *</Label>
                     <Input
@@ -331,23 +612,37 @@ export default function AdminDashboardPage() {
                       }}
                     />
                   </div>
+
                   <div className="flex gap-2">
                     <Button
                       onClick={handleSaveService}
+                      disabled={saving}
                       className="flex-1 gap-2 font-semibold"
                       data-ocid="admin.save_button"
                       style={{
-                        background: "oklch(var(--gold))",
+                        background: saving
+                          ? "oklch(var(--muted))"
+                          : "oklch(var(--gold))",
                         color: "oklch(var(--primary-foreground))",
                       }}
                     >
-                      <Save className="w-4 h-4" />
-                      {editId !== null ? "अपडेट करें" : "सहेजें"}
+                      {saving ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          सहेज रहे हैं...
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-4 h-4" />
+                          {editId !== null ? "अपडेट करें" : "सहेजें"}
+                        </>
+                      )}
                     </Button>
                     {editId !== null && (
                       <Button
                         variant="outline"
                         onClick={cancelEdit}
+                        disabled={saving}
                         data-ocid="admin.cancel_button"
                         className="text-gold"
                         style={{ borderColor: "oklch(var(--border))" }}
@@ -356,9 +651,21 @@ export default function AdminDashboardPage() {
                       </Button>
                     )}
                   </div>
+
+                  {saving && (
+                    <div
+                      data-ocid="admin.loading_state"
+                      className="flex items-center justify-center gap-2 py-1"
+                      style={{ color: "oklch(var(--gold))" }}
+                    >
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-xs">सहेजा जा रहा है...</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* Services List */}
               <div className="space-y-3" data-ocid="admin.list">
                 <h2 className="text-base font-bold text-gold">
                   रेट लिस्ट ({services.length})
@@ -375,13 +682,21 @@ export default function AdminDashboardPage() {
                     <div
                       key={s.id}
                       data-ocid={`admin.item.${i + 1}`}
-                      className="flex items-center gap-3 rounded-xl p-4"
+                      className="flex items-center gap-3 rounded-xl p-3"
                       style={{
                         background: "oklch(0.10 0.005 180)",
                         border: "1px solid oklch(var(--border))",
                       }}
                     >
-                      <span className="text-2xl flex-shrink-0">{s.icon}</span>
+                      {s.image ? (
+                        <img
+                          src={s.image}
+                          alt={s.name}
+                          className="w-12 h-12 rounded-lg object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <span className="text-2xl flex-shrink-0">{s.icon}</span>
+                      )}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-foreground truncate">
                           {s.name}
@@ -397,7 +712,7 @@ export default function AdminDashboardPage() {
                           variant="ghost"
                           onClick={() => startEdit(s)}
                           data-ocid={`admin.edit_button.${i + 1}`}
-                          className="w-8 h-8 text-muted-foreground hover:text-gold"
+                          className="w-8 h-8 text-gold hover:text-gold hover:bg-gold/10"
                           aria-label="संपादित करें"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -427,7 +742,7 @@ export default function AdminDashboardPage() {
                                 सेवा हटाएं?
                               </AlertDialogTitle>
                               <AlertDialogDescription className="text-muted-foreground">
-                                क्या आप "{s.name}" को हटाना चाहते हैं?
+                                क्या आप &quot;{s.name}&quot; को हटाना चाहते हैं?
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -464,6 +779,7 @@ export default function AdminDashboardPage() {
           {/* GALLERY TAB */}
           <TabsContent value="gallery">
             <div className="space-y-8">
+              {/* Upload section */}
               <div className="rounded-2xl p-6" style={cardStyle}>
                 <h2 className="text-base font-bold text-gold mb-5">
                   फ़ोटो अपलोड करें
@@ -485,30 +801,74 @@ export default function AdminDashboardPage() {
                       }}
                     />
                   </div>
+
+                  {/* Hidden file inputs */}
+                  <input
+                    ref={galleryCameraRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="hidden"
+                    onChange={(e) => handleGalleryUpload(e.target.files)}
+                  />
+                  <input
+                    ref={galleryFileRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleGalleryUpload(e.target.files)}
+                  />
                   <input
                     ref={fileInputRef}
                     type="file"
                     accept="image/*"
                     multiple
                     className="hidden"
-                    onChange={handleFileUpload}
+                    onChange={(e) => handleGalleryUpload(e.target.files)}
                   />
-                  <Button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploading}
-                    data-ocid="admin.upload_button"
-                    className="w-full gap-2 font-semibold"
-                    style={{
-                      background: "oklch(var(--gold))",
-                      color: "oklch(var(--primary-foreground))",
-                    }}
-                  >
-                    <Upload className="w-4 h-4" />
-                    {uploading ? "अपलोड हो रहा है..." : "फ़ोटो चुनें और अपलोड करें"}
-                  </Button>
-                  <p className="text-xs text-muted-foreground text-center">
-                    एक साथ कई फ़ोटो चुन सकते हैं
-                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => galleryCameraRef.current?.click()}
+                      disabled={uploading}
+                      className="h-20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80 active:scale-95"
+                      style={{
+                        background: "oklch(var(--input))",
+                        border: "2px dashed oklch(var(--gold-border))",
+                      }}
+                    >
+                      <Camera className="w-7 h-7 text-gold" />
+                      <span className="text-xs font-semibold text-foreground">
+                        📷 कैमरा से खींचें
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => galleryFileRef.current?.click()}
+                      disabled={uploading}
+                      className="h-20 rounded-xl flex flex-col items-center justify-center gap-2 transition-all hover:opacity-80 active:scale-95"
+                      style={{
+                        background: "oklch(var(--input))",
+                        border: "2px dashed oklch(var(--gold-border))",
+                      }}
+                    >
+                      <ImagePlus className="w-7 h-7 text-gold" />
+                      <span className="text-xs font-semibold text-foreground">
+                        🖼️ गैलरी से चुनें
+                      </span>
+                    </button>
+                  </div>
+                  {uploading && (
+                    <div
+                      className="flex items-center justify-center gap-2 py-1"
+                      style={{ color: "oklch(var(--gold))" }}
+                    >
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-xs">अपलोड हो रहा है...</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -530,124 +890,191 @@ export default function AdminDashboardPage() {
                       key={img.id}
                       data-ocid={`admin.item.${i + 1}`}
                       className="rounded-xl overflow-hidden"
-                      style={{ border: "1px solid oklch(var(--border))" }}
+                      style={{
+                        border:
+                          editImgId === img.id
+                            ? "2px solid oklch(var(--gold-border))"
+                            : "1px solid oklch(var(--border))",
+                      }}
                     >
-                      <div className="relative aspect-square group">
+                      {/* Image */}
+                      <div
+                        className="aspect-square relative overflow-hidden cursor-pointer"
+                        onClick={() =>
+                          editImgId !== img.id && setFullscreenImg(img.url)
+                        }
+                        onKeyDown={(e) =>
+                          e.key === "Enter" && setFullscreenImg(img.url)
+                        }
+                      >
                         <img
-                          src={img.url}
+                          src={editImgId === img.id ? editImgUrl : img.url}
                           alt={img.caption}
                           className="w-full h-full object-cover"
                           loading="lazy"
                         />
+                      </div>
+
+                      {/* Edit mode */}
+                      {editImgId === img.id ? (
                         <div
-                          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2"
-                          style={{
-                            background: "oklch(var(--background) / 0.7)",
-                          }}
+                          className="p-2 space-y-2"
+                          style={{ background: "oklch(0.10 0.005 180)" }}
                         >
-                          <Button
-                            size="sm"
-                            onClick={() => startEditImg(img)}
-                            data-ocid={`admin.edit_button.${i + 1}`}
-                            className="gap-1 text-xs"
-                            style={{
-                              background: "oklch(var(--gold))",
-                              color: "oklch(var(--primary-foreground))",
-                            }}
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="sm"
-                                data-ocid={`admin.delete_button.${i + 1}`}
-                                className="gap-1 text-xs"
-                                style={{
-                                  background: "oklch(var(--destructive))",
-                                  color: "#fff",
-                                }}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent
-                              data-ocid="admin.dialog"
+                          {/* Photo replacement buttons */}
+                          <input
+                            ref={editImgCameraRef}
+                            type="file"
+                            accept="image/*"
+                            capture="environment"
+                            className="hidden"
+                            onChange={handleEditImgFile}
+                          />
+                          <input
+                            ref={editImgFileRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleEditImgFile}
+                          />
+                          <div className="grid grid-cols-2 gap-1">
+                            <button
+                              type="button"
+                              onClick={() => editImgCameraRef.current?.click()}
+                              className="h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-semibold"
                               style={{
-                                background: "oklch(var(--popover))",
+                                background: "oklch(0.15 0.01 90)",
                                 border: "1px solid oklch(var(--gold-border))",
-                                color: "oklch(var(--foreground))",
+                                color: "oklch(var(--gold))",
                               }}
                             >
-                              <AlertDialogHeader>
-                                <AlertDialogTitle className="text-foreground">
-                                  फ़ोटो हटाएं?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription className="text-muted-foreground">
-                                  क्या आप इस फ़ोटो को हटाना चाहते हैं?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel
-                                  data-ocid="admin.cancel_button"
-                                  style={{
-                                    background: "oklch(var(--secondary))",
-                                    color: "oklch(var(--foreground))",
-                                  }}
-                                >
-                                  रद्द करें
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteImage(img.id)}
-                                  data-ocid="admin.confirm_button"
-                                  style={{
-                                    background: "oklch(var(--destructive))",
-                                    color: "#fff",
-                                  }}
-                                >
-                                  हाँ, हटाएं
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </div>
-                      {editImgId === img.id ? (
-                        <div className="p-2 flex gap-2">
+                              <Camera className="w-3 h-3" /> कैमरा
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => editImgFileRef.current?.click()}
+                              className="h-8 rounded-lg flex items-center justify-center gap-1 text-xs font-semibold"
+                              style={{
+                                background: "oklch(0.15 0.01 90)",
+                                border: "1px solid oklch(var(--gold-border))",
+                                color: "oklch(var(--gold))",
+                              }}
+                            >
+                              <ImagePlus className="w-3 h-3" /> गैलरी
+                            </button>
+                          </div>
+                          {/* Caption edit */}
                           <Input
                             value={editCaption}
                             onChange={(e) => setEditCaption(e.target.value)}
-                            className="text-xs h-7 flex-1"
+                            placeholder="कैप्शन..."
+                            className="text-xs h-7"
                             style={{
                               background: "oklch(var(--input))",
                               borderColor: "oklch(var(--border))",
                               color: "oklch(var(--foreground))",
                             }}
                           />
-                          <Button
-                            size="icon"
-                            onClick={saveEditImg}
-                            className="w-7 h-7 flex-shrink-0"
-                            style={{
-                              background: "oklch(var(--gold))",
-                              color: "oklch(var(--primary-foreground))",
-                            }}
-                          >
-                            <Save className="w-3 h-3" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={() => setEditImgId(null)}
-                            className="w-7 h-7 flex-shrink-0 text-muted-foreground"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
+                          {/* Save/Cancel */}
+                          <div className="flex gap-1">
+                            <Button
+                              size="sm"
+                              onClick={saveEditImg}
+                              className="flex-1 h-7 text-xs gap-1 font-semibold"
+                              style={{
+                                background: "oklch(var(--gold))",
+                                color: "#0b0b0b",
+                              }}
+                            >
+                              <Save className="w-3 h-3" /> सहेजें
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditImgId(null);
+                                setEditImgUrl("");
+                              }}
+                              className="h-7 text-xs text-muted-foreground"
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
                         </div>
                       ) : (
-                        <p className="px-2 py-1.5 text-xs text-muted-foreground truncate">
-                          {img.caption}
-                        </p>
+                        // Normal mode: always-visible action buttons
+                        <div style={{ background: "oklch(0.10 0.005 180)" }}>
+                          <div className="flex gap-1.5 px-2 pt-2">
+                            <Button
+                              size="sm"
+                              onClick={() => startEditImg(img)}
+                              data-ocid={`admin.edit_button.${i + 1}`}
+                              className="flex-1 gap-1 text-xs h-7 font-semibold"
+                              style={{
+                                background: "oklch(var(--gold))",
+                                color: "#0b0b0b",
+                              }}
+                            >
+                              <Edit2 className="w-3 h-3" /> एडिट
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  data-ocid={`admin.delete_button.${i + 1}`}
+                                  className="flex-1 gap-1 text-xs h-7 font-semibold"
+                                  style={{
+                                    background: "oklch(var(--destructive))",
+                                    color: "#fff",
+                                  }}
+                                >
+                                  <Trash2 className="w-3 h-3" /> हटाएं
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent
+                                data-ocid="admin.dialog"
+                                style={{
+                                  background: "oklch(var(--popover))",
+                                  border: "1px solid oklch(var(--gold-border))",
+                                  color: "oklch(var(--foreground))",
+                                }}
+                              >
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle className="text-foreground">
+                                    फ़ोटो हटाएं?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription className="text-muted-foreground">
+                                    क्या आप इस फ़ोटो को हटाना चाहते हैं?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel
+                                    data-ocid="admin.cancel_button"
+                                    style={{
+                                      background: "oklch(var(--secondary))",
+                                      color: "oklch(var(--foreground))",
+                                    }}
+                                  >
+                                    रद्द करें
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteImage(img.id)}
+                                    data-ocid="admin.confirm_button"
+                                    style={{
+                                      background: "oklch(var(--destructive))",
+                                      color: "#fff",
+                                    }}
+                                  >
+                                    हाँ, हटाएं
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                          <p className="px-2 py-1.5 text-xs text-muted-foreground truncate">
+                            {img.caption}
+                          </p>
+                        </div>
                       )}
                     </div>
                   ))}

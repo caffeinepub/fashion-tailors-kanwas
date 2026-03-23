@@ -1,9 +1,9 @@
 {
-  "name": "फैशन टेलर्स कनवास",
-  "short_name": "Kanwas",
+  "name": "Fashion Tailors Kanwas",
+  "short_name": "Tailors",
   "description": "प्रीमियम टेलरिंग शॉप - कनवास, राजस्थान",
-  "theme_color": "#c9a24a",
-  "background_color": "#0b0b0b",
+  "theme_color": "#000000",
+  "background_color": "#000000",
   "display": "standalone",
   "orientation": "portrait-primary",
   "start_url": "/",

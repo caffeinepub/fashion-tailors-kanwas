@@ -13,8 +13,9 @@ export function useLocalStorage<T>(key: string, initialValue: T) {
   useEffect(() => {
     try {
       window.localStorage.setItem(key, JSON.stringify(storedValue));
-    } catch {
-      // ignore
+    } catch (e) {
+      // Storage quota exceeded — warn in console
+      console.warn("LocalStorage quota exceeded for key:", key, e);
     }
   }, [key, storedValue]);
 

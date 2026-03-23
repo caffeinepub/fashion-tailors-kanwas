@@ -5,6 +5,7 @@ export interface Service {
   price: number;
   icon: string;
   priceNote?: string;
+  image?: string;
 }
 
 export interface GalleryImage {
@@ -24,19 +25,21 @@ export interface ShopSettings {
 export const defaultServices: Service[] = [
   {
     id: 1,
-    name: "बच्चों की कपड़े",
-    description: "बच्चों के लिए कस्टम सिलाई, सभी प्रकार के कपड़े",
+    name: "बच्चों के कपड़े",
+    description: "लड़कों के लिए कस्टम सिलाई, सभी प्रकार के कपड़े",
     price: 500,
     icon: "👦",
     priceNote: "सिलाई",
+    image: "/assets/generated/gents-bachon-kapde.dim_400x400.jpg",
   },
   {
     id: 2,
     name: "बड़ों के कपड़े",
-    description: "सभी प्रकार के बड़ों के कपड़ों की सिलाई",
+    description: "सभी प्रकार के गेंट्स कपड़ों की सिलाई",
     price: 700,
     icon: "🧵",
     priceNote: "सिलाई",
+    image: "/assets/generated/gents-coat-pant.dim_400x400.jpg",
   },
   {
     id: 3,
@@ -45,6 +48,7 @@ export const defaultServices: Service[] = [
     price: 4000,
     icon: "🧥",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-coat-pant.dim_400x400.jpg",
   },
   {
     id: 4,
@@ -53,6 +57,7 @@ export const defaultServices: Service[] = [
     price: 5000,
     icon: "👔",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-3piece-suit.dim_400x400.jpg",
   },
   {
     id: 5,
@@ -61,6 +66,7 @@ export const defaultServices: Service[] = [
     price: 5000,
     icon: "🎩",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-double-breasted.dim_400x400.jpg",
   },
   {
     id: 6,
@@ -69,6 +75,7 @@ export const defaultServices: Service[] = [
     price: 6000,
     icon: "🏇",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-hunting-coat.dim_400x400.jpg",
   },
   {
     id: 7,
@@ -77,6 +84,7 @@ export const defaultServices: Service[] = [
     price: 1700,
     icon: "🧤",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-hunting-coat.dim_400x400.jpg",
   },
   {
     id: 8,
@@ -85,6 +93,7 @@ export const defaultServices: Service[] = [
     price: 1200,
     icon: "👘",
     priceNote: "सिलाई",
+    image: "/assets/generated/gents-sada-kothi.dim_400x400.jpg",
   },
   {
     id: 9,
@@ -93,6 +102,7 @@ export const defaultServices: Service[] = [
     price: 3000,
     icon: "👑",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-jodhpuri-suit.dim_400x400.jpg",
   },
   {
     id: 10,
@@ -101,48 +111,49 @@ export const defaultServices: Service[] = [
     price: 1200,
     icon: "🥻",
     priceNote: "कपड़े सहित",
+    image: "/assets/generated/gents-kurta-pajama.dim_400x400.jpg",
   },
 ];
 
 export const defaultGallery: GalleryImage[] = [
   {
     id: 1,
-    url: "/assets/generated/kanwas-gallery-1.dim_600x600.jpg",
-    caption: "प्रीमियम सूट",
-  },
-  {
-    id: 2,
-    url: "/assets/generated/kanwas-gallery-2.dim_600x600.jpg",
+    url: "/assets/generated/gents-coat-pant.dim_400x400.jpg",
     caption: "कोट पेंट",
   },
   {
+    id: 2,
+    url: "/assets/generated/gents-3piece-suit.dim_400x400.jpg",
+    caption: "3 पीस सूट",
+  },
+  {
     id: 3,
-    url: "/assets/generated/kanwas-gallery-3.dim_600x600.jpg",
+    url: "/assets/generated/gents-jodhpuri-suit.dim_400x400.jpg",
     caption: "जोधपुरी सूट",
   },
   {
     id: 4,
-    url: "/assets/generated/kanwas-gallery-4.dim_600x600.jpg",
+    url: "/assets/generated/gents-kurta-pajama.dim_400x400.jpg",
     caption: "कुर्ता पायजामा",
   },
   {
     id: 5,
-    url: "/assets/generated/kanwas-gallery-5.dim_600x600.jpg",
+    url: "/assets/generated/gents-hunting-coat.dim_400x400.jpg",
     caption: "हंटिंग कोट",
   },
   {
     id: 6,
-    url: "/assets/generated/kanwas-gallery-6.dim_600x600.jpg",
-    caption: "3 पीस सूट",
+    url: "/assets/generated/gents-double-breasted.dim_400x400.jpg",
+    caption: "डबल ब्रेस्टेड",
   },
   {
     id: 7,
-    url: "/assets/generated/kanwas-gallery-7.dim_600x600.jpg",
-    caption: "हमारी वर्कशॉप",
+    url: "/assets/generated/gents-sada-kothi.dim_400x400.jpg",
+    caption: "सादा कोठी",
   },
   {
     id: 8,
-    url: "/assets/generated/kanwas-gallery-8.dim_600x600.jpg",
+    url: "/assets/generated/gents-bachon-kapde.dim_400x400.jpg",
     caption: "बच्चों के कपड़े",
   },
 ];
